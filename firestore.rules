@@ -1,0 +1,86 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: roasts
+// Document ID: {roastId}
+// Fields:
+//   - userId: string (required) - The UID of the user who generated this.
+//   - input: string (required) - The user's original input.
+//   - roast: string (required) - The generated roast text.
+//   - rap: object (required) - { title, hook, verse }
+//   - humanRoast: string (optional) - The user's own roast.
+//   - humanRap: string (optional) - The user's own rap.
+//   - caption: string (required) - A short social media caption.
+//   - hashtags: list (required) - List of strings.
+//   - createdAt: timestamp (required) - When this was generated.
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "kd7158856@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidRoast(data) {
+      let requiredFields = ['userId', 'input', 'roast', 'rap', 'caption', 'hashtags', 'createdAt'];
+      let allowedFields = requiredFields.concat(['humanRoast', 'humanRap']);
+      
+      return data.keys().hasAll(requiredFields) &&
+             data.keys().hasOnly(allowedFields) &&
+             data.userId is string &&
+             data.input is string && data.input.size() < 2000 &&
+             data.roast is string && data.roast.size() < 5000 &&
+             data.rap is map &&
+             data.rap.title is string && data.rap.title.size() < 200 &&
+             data.rap.hook is string && data.rap.hook.size() < 1000 &&
+             data.rap.verse is string && data.rap.verse.size() < 5000 &&
+             (!('humanRoast' in data) || (data.humanRoast is string && data.humanRoast.size() < 5000)) &&
+             (!('humanRap' in data) || (data.humanRap is string && data.humanRap.size() < 5000)) &&
+             data.caption is string && data.caption.size() < 500 &&
+             data.hashtags is list && data.hashtags.size() < 20 &&
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /roasts/{roastId} {
+      // Users can read their own roasts
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      
+      // Users can create roasts for themselves
+      allow create: if isAuthenticated() && 
+                      isOwner(request.resource.data.userId) && 
+                      isValidRoast(request.resource.data);
+      
+      // Roasts are immutable
+      allow update, delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isOwner(userId) && request.resource.data.role == 'user';
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+}

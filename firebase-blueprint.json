@@ -1,0 +1,60 @@
+{
+  "entities": {
+    "RoastRap": {
+      "title": "RoastRap",
+      "description": "A generated roast and rap entry.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user who generated this."
+        },
+        "input": {
+          "type": "string",
+          "description": "The user's original input."
+        },
+        "roast": {
+          "type": "string",
+          "description": "The generated roast text."
+        },
+        "rap": {
+          "type": "object",
+          "properties": {
+            "title": { "type": "string" },
+            "hook": { "type": "string" },
+            "verse": { "type": "string" }
+          },
+          "required": ["title", "hook", "verse"]
+        },
+        "caption": {
+          "type": "string",
+          "description": "A short social media caption."
+        },
+        "hashtags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "humanRoast": {
+          "type": "string",
+          "description": "The user's own roast."
+        },
+        "humanRap": {
+          "type": "string",
+          "description": "The user's own rap."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When this was generated."
+        }
+      },
+      "required": ["userId", "input", "roast", "rap", "caption", "hashtags", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/roasts/{roastId}": {
+      "schema": "RoastRap",
+      "description": "Collection of generated roast and rap entries."
+    }
+  }
+}
